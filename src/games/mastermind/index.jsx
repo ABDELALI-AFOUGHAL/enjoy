@@ -2,34 +2,41 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 const Mastermind = () => {
-  const COLORS = ['🔴', '🟡', '🟢', '🔵', '🟣', '🟠', '🟤', '⚫', '⚪', '🟰']
+  const ALL_COLORS = ['🔴', '🟡', '🟢', '🔵', '🟣', '🟠', '🟤', '⚫']
   const MAX_ATTEMPTS = 12
 
   // Game settings
   const [codeLength, setCodeLength] = useState(4)
-  const [allowRepeats, setAllowRepeats] = useState(true)
+  const [gameMode, setGameMode] = useState('classic')
+  const [colorCount, setColorCount] = useState(6)
   const [gameStarted, setGameStarted] = useState(false)
 
+  // Get available colors based on color count setting
+  const getAvailableColors = () => ALL_COLORS.slice(0, colorCount)
+
   // Generate random secret code
-  const generateSecretCode = (length = codeLength, repeats = allowRepeats) => {
-    if (repeats) {
+  const generateSecretCode = (length = codeLength, mode = gameMode) => {
+    const allowRepeats = mode === 'classic'
+    const availableColors = getAvailableColors()
+    
+    if (allowRepeats) {
       // Allow repeated colors
       return Array.from({ length }, () => 
-        COLORS[Math.floor(Math.random() * COLORS.length)]
+        availableColors[Math.floor(Math.random() * availableColors.length)]
       )
     } else {
       // No repeated colors - ensure we have enough colors
-      const availableColors = [...COLORS]
+      const colorPool = [...availableColors]
       const code = []
       
       for (let i = 0; i < length; i++) {
-        if (availableColors.length === 0) {
+        if (colorPool.length === 0) {
           // If we run out of colors, allow repeats for remaining positions
-          availableColors.push(...COLORS)
+          colorPool.push(...availableColors)
         }
-        const randomIndex = Math.floor(Math.random() * availableColors.length)
-        code.push(availableColors[randomIndex])
-        availableColors.splice(randomIndex, 1) // Remove used color
+        const randomIndex = Math.floor(Math.random() * colorPool.length)
+        code.push(colorPool[randomIndex])
+        colorPool.splice(randomIndex, 1) // Remove used color
       }
       
       return code
@@ -48,6 +55,13 @@ const Mastermind = () => {
     setCurrentGuess(Array(codeLength).fill(''))
   }, [codeLength])
 
+  // Regenerate secret code when settings change
+  useEffect(() => {
+    if (guessHistory.length === 0) { // Only if game hasn't started
+      setSecretCode(generateSecretCode())
+    }
+  }, [codeLength, gameMode, colorCount])
+
   // Check if game is complete
   useEffect(() => {
     if (guessHistory.length >= MAX_ATTEMPTS && !isWon) {
@@ -65,7 +79,7 @@ const Mastermind = () => {
     const guessCopy = [...guess]
     
     // First pass: count correct positions
-    for (let i = 0; i < CODE_LENGTH; i++) {
+    for (let i = 0; i < codeLength; i++) {
       if (guessCopy[i] === secretCopy[i]) {
         correctPosition++
         secretCopy[i] = null // Mark as used
@@ -74,7 +88,7 @@ const Mastermind = () => {
     }
     
     // Second pass: count correct colors in wrong positions
-    for (let i = 0; i < CODE_LENGTH; i++) {
+    for (let i = 0; i < codeLength; i++) {
       if (guessCopy[i] !== null) {
         const colorIndex = secretCopy.indexOf(guessCopy[i])
         if (colorIndex !== -1) {
@@ -119,14 +133,14 @@ const Mastermind = () => {
     setGuessHistory(newHistory)
     
     // Check if won
-    if (feedback.correctPosition === CODE_LENGTH) {
+    if (feedback.correctPosition === codeLength) {
       setIsWon(true)
       setIsComplete(true)
       setShowCode(true)
     }
     
     // Clear current guess for next attempt
-    setCurrentGuess(Array(CODE_LENGTH).fill(''))
+    setCurrentGuess(Array(codeLength).fill(''))
   }
 
   // Reset game
@@ -187,7 +201,7 @@ const Mastermind = () => {
       {/* Game Settings */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Game Settings</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Game Mode
@@ -216,6 +230,21 @@ const Mastermind = () => {
               <option value={4}>4 Colors</option>
               <option value={5}>5 Colors</option>
               <option value={6}>6 Colors</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Color Palette
+            </label>
+            <select
+              value={colorCount}
+              onChange={(e) => setColorCount(Number(e.target.value))}
+              disabled={guessHistory.length > 0}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value={6}>6 Colors</option>
+              <option value={7}>7 Colors</option>
+              <option value={8}>8 Colors</option>
             </select>
           </div>
         </div>
@@ -275,7 +304,7 @@ const Mastermind = () => {
 
           {/* Color palette */}
           <div className="flex justify-center space-x-2 mb-6">
-            {COLORS.map((color, index) => (
+            {getAvailableColors().map((color, index) => (
               <button
                 key={index}
                 onClick={() => {
@@ -368,10 +397,10 @@ const Mastermind = () => {
           <div>
             <h5 className="font-medium text-gray-800 mb-2">Gameplay:</h5>
             <ul className="space-y-1">
-              <li>• Try to guess the secret 4-color code</li>
+              <li>• Try to guess the secret {codeLength}-color code</li>
               <li>• Click color slots to fill your guess</li>
               <li>• You have {MAX_ATTEMPTS} attempts to crack the code</li>
-              <li>• Colors can repeat in the secret code</li>
+              <li>• {gameMode === 'classic' ? 'Colors can repeat in the secret code' : 'All colors in the code are unique'}</li>
             </ul>
           </div>
           <div>
@@ -388,7 +417,7 @@ const Mastermind = () => {
         <div className="mt-4 p-3 bg-blue-50 rounded-lg">
           <h5 className="font-medium text-blue-900 mb-1">💡 Strategy Tip:</h5>
           <p className="text-sm text-blue-700">
-            Start with a guess using 4 different colors to get maximum information. 
+            Start with a guess using {Math.min(codeLength, colorCount)} different colors to get maximum information. 
             Use the feedback to eliminate possibilities and focus on the most likely combinations.
           </p>
         </div>
