@@ -4,6 +4,29 @@ import { Link } from 'react-router-dom'
 const LightsOut = () => {
   const GRID_SIZE = 5
   
+  // Toggle a light and its neighbors - utility function
+  const toggleLightsUtility = (currentGrid, row, col) => {
+    const newGrid = currentGrid.map(r => [...r])
+    
+    // Define positions to toggle (center + cross pattern)
+    const positions = [
+      [row, col],           // Center
+      [row - 1, col],       // Up
+      [row + 1, col],       // Down
+      [row, col - 1],       // Left
+      [row, col + 1]        // Right
+    ]
+
+    // Toggle each valid position
+    positions.forEach(([r, c]) => {
+      if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+        newGrid[r][c] = !newGrid[r][c]
+      }
+    })
+
+    return newGrid
+  }
+  
   // Initialize grid with random pattern or solved state
   const initializeGrid = (randomStart = true) => {
     if (randomStart) {
@@ -15,7 +38,7 @@ const LightsOut = () => {
       for (let i = 0; i < moves; i++) {
         const row = Math.floor(Math.random() * GRID_SIZE)
         const col = Math.floor(Math.random() * GRID_SIZE)
-        grid = toggleLights(grid, row, col, false) // false = don't count moves
+        grid = toggleLightsUtility(grid, row, col)
       }
       return grid
     } else {
@@ -101,7 +124,7 @@ const LightsOut = () => {
     for (let i = 0; i < moveCount; i++) {
       const row = Math.floor(Math.random() * GRID_SIZE)
       const col = Math.floor(Math.random() * GRID_SIZE)
-      grid = toggleLights(grid, row, col, false)
+      grid = toggleLightsUtility(grid, row, col)
     }
     
     setGrid(grid)
